@@ -10,6 +10,11 @@
 !README.md
 !*.md
 
+# allow project config files
+!requirements*.txt
+!.env.example
+!Makefile
+
 # common python junk
 .venv/
 __pycache__/

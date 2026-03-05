@@ -1,0 +1,13 @@
+# Shared runtime dependencies for PostProcessor-SAFIR
+#
+# Install with:
+#   pip install -r requirements-base.txt
+
+# XML parsing (SAFIR result files)
+lxml>=4.9
+
+# Data manipulation and CSV/Excel export
+pandas>=2.0
+
+# Excel export support (used by shared/visualization/export_utils.py)
+openpyxl>=3.1

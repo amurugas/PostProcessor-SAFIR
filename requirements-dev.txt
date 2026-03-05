@@ -1,0 +1,23 @@
+# Development dependencies for PostProcessor-SAFIR
+#
+# Install with:
+#   pip install -r requirements-dev.txt
+#
+# Assumes requirements-base.txt is already installed.
+
+-r requirements-base.txt
+
+# Interactive dashboards (optional, needed to run 2D-THERMAL and SAFIR-Dashboard tools)
+bokeh>=3.0
+streamlit>=1.30
+
+# Linting
+flake8>=7.0
+flake8-bugbear>=24.0
+
+# Testing
+pytest>=8.0
+pytest-cov>=5.0
+
+# Type checking (optional)
+mypy>=1.9
