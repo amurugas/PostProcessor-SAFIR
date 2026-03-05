@@ -25,56 +25,20 @@ class ThermalDatabaseManager(BaseDatabaseManager):
     def create_tables(self) -> None:
         with self.connect() as conn:
             cur = conn.cursor()
-            self._create_common_tables(cur)
-            cur.executescript("""
-                CREATE TABLE IF NOT EXISTS node_coordinates (
-                    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-                    node_id INTEGER NOT NULL,
-                    x       REAL,
-                    y       REAL
-                );
+            self.define_sql_table(cur, "2D-Thermal.sql")
 
-                CREATE TABLE IF NOT EXISTS solid_mesh (
-                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                    solid_id     INTEGER NOT NULL,
-                    N1           INTEGER,
-                    N2           INTEGER,
-                    N3           INTEGER,
-                    N4           INTEGER,
-                    material_tag INTEGER
-                );
-
-                CREATE TABLE IF NOT EXISTS material_list (
-                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                    material_tag  INTEGER NOT NULL,
-                    material_name TEXT    NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS node_temperatures (
-                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp_id INTEGER NOT NULL,
-                    node_id      INTEGER NOT NULL,
-                    Temperature  REAL
-                );
-
-                CREATE TABLE IF NOT EXISTS max_temp_by_material (
-                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                    material_tag  INTEGER NOT NULL,
-                    material_name TEXT,
-                    timestamp_id  INTEGER NOT NULL,
-                    max_temp      REAL
-                );
-            """)
-            logger.info("Thermal database tables ensured.")
-
+    def create_views(self) -> None:
+        with self.connect() as conn:
+            cur = conn.cursor()
+            self.define_sql_views(cur, "2D-Thermal-views.sql")
     # ------------------------------------------------------------------
     # Clear
     # ------------------------------------------------------------------
 
     def _do_clear(self) -> None:
         tables = [
+            "frontiers",
             "node_temperatures",
-            "max_temp_by_material",
             "node_coordinates",
             "solid_mesh",
             "material_list",
@@ -82,8 +46,18 @@ class ThermalDatabaseManager(BaseDatabaseManager):
             "temperature_curve",
             "model_data",
         ]
+        views = [
+            "solid_avg_temperature",
+         ]
+
         with self.connect() as conn:
             cur = conn.cursor()
             for table in tables:
                 cur.execute(f"DELETE FROM {table}")
-        logger.info("Thermal database cleared.")
+                cur.execute(f"DELETE FROM sqlite_sequence WHERE name='{table}'")
+                cur.execute(f"DELETE FROM sqlite_sequence WHERE name='{table}'")
+
+            for view in views:
+                cur.execute(f"DROP VIEW IF EXISTS {view}")
+
+        logger.info("Tables and views cleared.")

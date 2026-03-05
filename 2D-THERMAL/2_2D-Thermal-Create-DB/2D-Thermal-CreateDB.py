@@ -6,6 +6,7 @@ from lxml import objectify
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class DatabaseManager:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -104,6 +105,7 @@ class DatabaseManager:
     #
     #         """)
     #         logging.info("Views created.")
+
     def clear_database(self):
         # confirm = input("Are you sure you want to clear the database? (yes/no): ")
         # if confirm.lower() != 'yes':
@@ -523,22 +525,23 @@ def store_node_coords_per_file(output_db_path, xml_folder):
 if __name__ == "__main__":
     input_folder = "BatchXml/Beams"  # Folder containing all XMLs
     fct_file = "data/S1C.fct"  # Shared fire curve file
-    # batch_process_folder(input_folder, fct_file)
 
-    db_path = input("Enter SQLite database path: ").strip()
+    # batch_process_folder(input_folder, fct_file)
+    # db_path = input("Enter SQLite database path: ").strip()
     store_node_coords_per_file(db_path,input_folder)
 
     # xml_path = input("Enter SAFIR XML file path: ").strip()
+
     # db_path = 'W24.db'
     # xml_path = 'w24x55_ins.XML'
     # fct_path = 'data/S1C.fct'
+
     # db = DatabaseManager(db_path)
     # parser = FileParser(db)
     # postprocessor = PostProcessor(db)
-    #
+
     # db.clear_database()
     # parser.parse_xml_data(xml_path)
     # parser.store_fire_curve(fct_path)
     # postprocessor.calc_maxtemp_bymaterial()
-
     # db.create_views()

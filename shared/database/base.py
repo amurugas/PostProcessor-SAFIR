@@ -8,6 +8,7 @@ appropriate for their analysis type (thermal, structural, …).
 """
 
 import logging
+import os
 import sqlite3
 from abc import ABC, abstractmethod
 
@@ -27,6 +28,7 @@ class BaseDatabaseManager(ABC):
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
         self.create_tables()
+        self.create_views()
 
     # ------------------------------------------------------------------
     # Connection helper
@@ -51,34 +53,56 @@ class BaseDatabaseManager(ABC):
         database.
         """
 
-    # ------------------------------------------------------------------
-    # Shared table: timestamps
-    # ------------------------------------------------------------------
+    def create_views(self) -> None:
+        """Create convenience views.  Override in subclasses as required."""
 
-    def _create_common_tables(self, cursor: sqlite3.Cursor) -> None:
-        """Create tables that are common across analysis types."""
-        cursor.executescript("""
-            CREATE TABLE IF NOT EXISTS timestamps (
-                id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                time REAL    NOT NULL UNIQUE
-            );
+    def clear_database(self) -> None:
+        """Prompt the user before wiping all rows from every table."""
+        confirm = input("Are you sure you want to clear the database? (yes/no): ")
+        if confirm.strip().lower() != "yes":
+            logger.info("Database clearing aborted.")
+            return
+        self._do_clear()
 
-            CREATE TABLE IF NOT EXISTS model_data (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT    NOT NULL,
-                value       TEXT    NOT NULL,
-                description TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS temperature_curve (
-                id          INTEGER PRIMARY KEY,
-                time        REAL,
-                temperature REAL
-            );
-        """)
+    def _do_clear(self) -> None:  # pragma: no cover – subclasses override
+        """Perform the actual DELETE operations (override in subclasses)."""
+        raise NotImplementedError(
+            "Subclasses must implement _do_clear() to list their tables."
+        )
 
     # ------------------------------------------------------------------
     # Shared utilities
+    # ------------------------------------------------------------------
+
+    def define_sql_table(self, cursor: sqlite3.Cursor, sql_file: str) -> None:
+        """Load a single table creation script from an SQL file."""
+        sql_dir = "sql_tables"  # Directory containing the SQL files
+        sql_path = os.path.join(sql_dir, sql_file)
+
+        if not os.path.exists(sql_path):
+            logger.error(f"SQL file not found: {sql_path}")
+            return
+
+        with open(sql_path, "r") as file:
+            sql_script = file.read()
+            cursor.executescript(sql_script)
+            logger.info(f" SQL Tables created: {sql_file}")
+
+    def define_sql_views(self, cursor: sqlite3.Cursor, sql_file: str) -> None:
+        """Load a single table creation script from an SQL file."""
+        sql_dir = "sql_views"  # Directory containing the SQL files
+        sql_path = os.path.join(sql_dir, sql_file)
+
+        if not os.path.exists(sql_path):
+            logger.error(f"SQL file not found: {sql_path}")
+            return
+
+        with open(sql_path, "r") as file:
+            sql_script = file.read()
+            cursor.executescript(sql_script)
+            logger.info(f" SQL Views created: {sql_file}")
+    # ------------------------------------------------------------------
+    # Shared table: timestamps
     # ------------------------------------------------------------------
 
     def insert_timestamp(self, time: float) -> int:
@@ -97,20 +121,3 @@ class BaseDatabaseManager(ABC):
             cur.execute("SELECT id FROM timestamps WHERE time = ?", (time,))
             row = cur.fetchone()
             return row[0]
-
-    def clear_database(self) -> None:
-        """Prompt the user before wiping all rows from every table."""
-        confirm = input("Are you sure you want to clear the database? (yes/no): ")
-        if confirm.strip().lower() != "yes":
-            logger.info("Database clearing aborted.")
-            return
-        self._do_clear()
-
-    def _do_clear(self) -> None:  # pragma: no cover – subclasses override
-        """Perform the actual DELETE operations (override in subclasses)."""
-        raise NotImplementedError(
-            "Subclasses must implement _do_clear() to list their tables."
-        )
-
-    def create_views(self) -> None:
-        """Create convenience views.  Override in subclasses as required."""

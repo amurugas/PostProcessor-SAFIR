@@ -128,8 +128,37 @@ class XmlParser:
                 f"SAFIR XML file not found: {self.xml_path}"
             )
 
-        with open(self.xml_path, "rb") as fh:
-            root = objectify.parse(fh).getroot()
+        parser = objectify.makeparser(
+            huge_tree=True,
+            recover=True,
+            resolve_entities=False,
+            remove_comments=True,
+            remove_pis=True,
+            remove_blank_text=True,
+            collect_ids=False,
+        )
+
+        # Feed bytes incrementally with a virtual root wrapper
+        with open(self.xml_path, "rb") as f:
+            parser.feed(b"<ROOT>")
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                parser.feed(chunk)
+            parser.feed(b"</ROOT>")
+            root = parser.close()
 
         logger.info("Parsed XML file: %s", self.xml_path)
         return root
+
+        def parse_vector2(self, text):
+            try:
+                parts = text.strip().split()
+                return float(parts[0]), float(parts[1])
+            except:
+                return None, None
+
+        def parse_vector3(self, text_element):
+            try:
+                parts = str(text_element).strip().split()
+                return float(parts[0]), float(parts[1]), float(parts[2])
+            except:
+                return None, None, None
