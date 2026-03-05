@@ -1,0 +1,15 @@
+# ignore everything
+*
+
+# allow folders
+!*/
+
+# allow python + a few basics
+!*.py
+!.gitignore
+!README.md
+!*.md
+
+# common python junk
+.venv/
+__pycache__/
