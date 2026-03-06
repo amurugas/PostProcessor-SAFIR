@@ -164,15 +164,6 @@ def parse_input_file(file_path, db: SafirDB):
                 db.insert_shell_group(shell_group_counter, section)
                 shell_group_counter += 1
 
-        elif mode == "BEAMS" and line.startswith("ELEM"):
-            parts = line.split()
-            _, eid, n1, n3, n2, n4, group_id = parts
-            db.insert_beam(int(eid), int(n1), int(n3), int(n2), int(n4), int(group_id))
-
-        elif mode == "SHELLS" and line.startswith("ELEM"):
-            parts = line.split()
-            _, eid, n1, n2, n3, n4, group_id = parts
-            db.insert_shell(int(eid), int(n1), int(n2), int(n3), int(n4), int(group_id))
 
     db.commit()
     logging.info("Parsing complete and data committed.")

@@ -27,8 +27,6 @@ class BaseDatabaseManager(ABC):
 
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
-        self.create_tables()
-        self.create_views()
 
     # ------------------------------------------------------------------
     # Connection helper
@@ -76,7 +74,8 @@ class BaseDatabaseManager(ABC):
 
     def define_sql_table(self, cursor: sqlite3.Cursor, sql_file: str) -> None:
         """Load a single table creation script from an SQL file."""
-        sql_dir = "sql_tables"  # Directory containing the SQL files
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        sql_dir = os.path.join(base_dir, "sql_tables")  # Directory containing the SQL files
         sql_path = os.path.join(sql_dir, sql_file)
 
         if not os.path.exists(sql_path):
@@ -86,11 +85,12 @@ class BaseDatabaseManager(ABC):
         with open(sql_path, "r") as file:
             sql_script = file.read()
             cursor.executescript(sql_script)
-            logger.info(f" SQL Tables created: {sql_file}")
+            logger.info(f"SQL Tables created: {sql_file}")
 
     def define_sql_views(self, cursor: sqlite3.Cursor, sql_file: str) -> None:
         """Load a single table creation script from an SQL file."""
-        sql_dir = "sql_views"  # Directory containing the SQL files
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        sql_dir = os.path.join(base_dir, "sql_views")  # Directory containing the SQL files
         sql_path = os.path.join(sql_dir, sql_file)
 
         if not os.path.exists(sql_path):
@@ -100,24 +100,9 @@ class BaseDatabaseManager(ABC):
         with open(sql_path, "r") as file:
             sql_script = file.read()
             cursor.executescript(sql_script)
-            logger.info(f" SQL Views created: {sql_file}")
+            logger.info(f"SQL Views created: {sql_file}")
     # ------------------------------------------------------------------
     # Shared table: timestamps
     # ------------------------------------------------------------------
 
-    def insert_timestamp(self, time: float) -> int:
-        """Insert *time* into the ``timestamps`` table (or ignore duplicate).
 
-        Returns
-        -------
-        int
-            The ``id`` of the inserted or existing row.
-        """
-        with self.connect() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT OR IGNORE INTO timestamps (time) VALUES (?)", (time,)
-            )
-            cur.execute("SELECT id FROM timestamps WHERE time = ?", (time,))
-            row = cur.fetchone()
-            return row[0]

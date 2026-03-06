@@ -10,11 +10,8 @@ Schema mirrors the tables created by
 import logging
 import os.path
 import sqlite3
-
 from .base import BaseDatabaseManager
-
 logger = logging.getLogger(__name__)
-
 
 class StructuralDatabaseManager(BaseDatabaseManager):
     """SQLite database manager for 3D-STRUCTURAL SAFIR results."""
@@ -43,6 +40,10 @@ class StructuralDatabaseManager(BaseDatabaseManager):
     # ------------------------------------------------------------------
 
     def _do_clear(self) -> None:
+        if not os.path.exists(self.db_path):
+            logger.warning(f"Database file does not exist: {self.db_path}. Skipping clear operation.")
+            return
+
         tables = [
             "beam_fiber_strains",
             "beam_fiber_stresses",

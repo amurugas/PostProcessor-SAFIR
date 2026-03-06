@@ -1,4 +1,10 @@
-class ThermalParsers(BaseParsers):
+import logging
+from .parsers import XmlParser
+
+logger = logging.getLogger(__name__)
+
+class ThermalParser(XmlParser):
+
     def store_model_data(self, root):
         # SAFIR tag -> description mapping
         metadata_map = {
@@ -196,60 +202,35 @@ class ThermalParsers(BaseParsers):
             """, temperature_data)
         logging.info(f"Inserted {len(temperature_data)} node temperature entries.")
 
-
-    def store_fire_curve(self, fct_file_path):
-        if not os.path.exists(fct_file_path):
-            logging.error(f"Fire curve file not found: {fct_file_path}")
-            return
-
-        with open(fct_file_path, "r") as file:
-            lines = file.readlines()
-
-        data = []
-        for line in lines:
-            parts = line.strip().split()
-            if len(parts) == 2:
-                try:
-                    time = float(parts[0])
-                    temp = float(parts[1])
-                    data.append((time, temp))
-                except ValueError:
-                    continue
-
-        if not data:
-            logging.warning("No valid data in fire curve file.")
-            return
-
-        df = pd.DataFrame(data, columns=["time", "temperature"])
-        df.insert(0, "id", range(1, len(df) + 1))
-
-        with self.db.connect() as conn:
-            conn.execute("DELETE FROM temperature_curve")
-            df.to_sql("temperature_curve", conn, if_exists="append", index=False)
-
-        logging.info(f"Inserted {len(df)} records into temperature_curve.")
-
-           
     def calc_maxtemp_bymaterial(self):
-    with self.db.connect() as conn:
-        cur = conn.cursor()
-        cur.execute("""
-        CREATE VIEW vw_solid_avg_temperature AS
-        WITH solid_nodes AS (
-            SELECT solid_id, material_tag, N1 AS node_id FROM solid_mesh WHERE N1 IS NOT NULL
-            UNION ALL
-            SELECT solid_id, material_tag, N2 FROM solid_mesh WHERE N2 IS NOT NULL
-            UNION ALL
-            SELECT solid_id, material_tag, N3 FROM solid_mesh WHERE N3 IS NOT NULL
-            UNION ALL
-            SELECT solid_id, material_tag, N4 FROM solid_mesh WHERE N4 IS NOT NULL
-        )
-        SELECT 
-            sn.material_tag,
-            tc.timestamp_id,
-            AVG(tc.Temperature) AS avg_temperature
-        FROM solid_nodes sn
-        JOIN node_temperatures tc ON sn.node_id = tc.node_id
-        GROUP BY sn.material_tag, tc.timestamp_id;
-        """)
+        with self.db.connect() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+            CREATE VIEW vw_solid_avg_temperature AS
+            WITH solid_nodes AS (
+                SELECT solid_id, material_tag, N1 AS node_id FROM solid_mesh WHERE N1 IS NOT NULL
+                UNION ALL
+                SELECT solid_id, material_tag, N2 FROM solid_mesh WHERE N2 IS NOT NULL
+                UNION ALL
+                SELECT solid_id, material_tag, N3 FROM solid_mesh WHERE N3 IS NOT NULL
+                UNION ALL
+                SELECT solid_id, material_tag, N4 FROM solid_mesh WHERE N4 IS NOT NULL
+            )
+            SELECT 
+                sn.material_tag,
+                tc.timestamp_id,
+                AVG(tc.Temperature) AS avg_temperature
+            FROM solid_nodes sn
+            JOIN node_temperatures tc ON sn.node_id = tc.node_id
+            GROUP BY sn.material_tag, tc.timestamp_id;
+            """)
         logging.info("Created temperature by material curve.")
+
+    def parse_and_store_tables(self):
+        root = self.parse()
+        self.store_model_data(root)
+        self.store_node_coordinates(root)
+        self.store_solid_mesh(root)
+        self.store_frontiers(root)
+        self.store_material_list(root)
+        self.store_node_temperatures(root)

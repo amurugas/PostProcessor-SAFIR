@@ -3,11 +3,11 @@ shared.data – SAFIR-format parsers and processing pipelines.
 """
 
 from .parsers import FireCurveParser, XmlParser
-from .processors import TemperatureProcessor, DisplacementProcessor
+from .processors import SectionProcessor, DisplacementProcessor
 
 __all__ = [
     "FireCurveParser",
     "XmlParser",
-    "TemperatureProcessor",
+    "SectionProcessor",
     "DisplacementProcessor",
 ]

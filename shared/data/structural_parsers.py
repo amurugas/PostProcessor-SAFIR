@@ -1,3 +1,11 @@
+import logging
+import os
+import pandas as pd
+from .parsers import XmlParser
+
+logger = logging.getLogger(__name__)
+
+class StructParsers(XmlParser):
     def store_model_data(self, root):
         # SAFIR tag -> description mapping
         metadata_map = {
@@ -536,6 +544,27 @@
 
         logging.info(f"Inserted {len(reaction_data)} reaction entries.")
 
+    def parse_and_store_tables(self):
+        root = self.parse()
+        # Your original call order stays intact
+        self.store_model_data(root)
+        self.store_node_coordinates(root)
+        self.store_beam_nodes(root)
+        self.store_shell_nodes(root)
 
+        self.store_node_fixity(root)
+        self.store_beam_sections(root)
+        self.store_shell_sections(root)
+        self.store_shell_loads(root)
+        self.store_material_list(root)
+
+        self.store_node_displacements(root)
+        self.store_beam_forces(root)
+        self.store_shell_strains(root)
+        self.store_rebar_strains(root)
+
+        self.store_beam_fiber_stresses(root)
+        self.store_beam_fiber_strains(root)
+        self.store_reactions(root)
 
 

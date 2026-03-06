@@ -19,7 +19,7 @@ import sqlite3
 logger = logging.getLogger(__name__)
 
 
-class TemperatureProcessor:
+class SectionProcessor:
     """Compute temperature statistics from a thermal SAFIR database.
 
     Parameters

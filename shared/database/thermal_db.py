@@ -6,14 +6,13 @@ Database manager for 2D thermal analysis results.
 Schema mirrors the tables created by
 ``2D-THERMAL/2_2D-Thermal-Create-DB/2D-Thermal-CreateDB.py``.
 """
-
+import os
 import logging
 import sqlite3
 
 from .base import BaseDatabaseManager
 
 logger = logging.getLogger(__name__)
-
 
 class ThermalDatabaseManager(BaseDatabaseManager):
     """SQLite database manager for 2D-THERMAL SAFIR results."""
@@ -31,11 +30,16 @@ class ThermalDatabaseManager(BaseDatabaseManager):
         with self.connect() as conn:
             cur = conn.cursor()
             self.define_sql_views(cur, "2D-Thermal-views.sql")
+
     # ------------------------------------------------------------------
     # Clear
     # ------------------------------------------------------------------
 
     def _do_clear(self) -> None:
+        if not os.path.exists(self.db_path):
+            logger.warning(f"Database file does not exist: {self.db_path}. Skipping clear operation.")
+            return
+
         tables = [
             "frontiers",
             "node_temperatures",
@@ -47,7 +51,8 @@ class ThermalDatabaseManager(BaseDatabaseManager):
             "model_data",
         ]
         views = [
-            "solid_avg_temperature",
+            "vw_solid_nodes",
+            "vw_material_temperature_summary",
          ]
 
         with self.connect() as conn:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import pandas as pd
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,31 +23,32 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 # ---------------------------------------------------------------------------
 # Fire-curve parser
 # ---------------------------------------------------------------------------
 
 class FireCurveParser:
-    """Parse a SAFIR fire-curve (``.fct``) file.
-
-    The file format is two whitespace-separated columns per line::
-
-        0.0   20.0
-        60.0  200.0
-        ...
+    """Parse a SAFIR fire-curve (``.fct``) file and store data in the database.
 
     Parameters
     ----------
     file_path:
         Path to the ``.fct`` file.
+    db:
+        Database manager instance.
     """
 
-    def __init__(self, file_path: str) -> None:
+    def __init__(self, file_path: str, db: object) -> None:
         self.file_path = os.path.abspath(file_path)
+        self.db = db  # Database manager instance
 
     def parse(self) -> list[tuple[float, float]]:
-        """Return a list of ``(time, temperature)`` tuples.
+        """Stream and parse the fire-curve file.
+
+        Returns
+        -------
+        list[tuple[float, float]]
+            A list of ``(time, temperature)`` tuples.
 
         Raises
         ------
@@ -80,6 +82,31 @@ class FireCurveParser:
             )
         return data
 
+    def store_fire_curve(self, data: list[tuple[float, float]]) -> None:
+        """Store the parsed data into the `temperature_curve` table.
+
+        Parameters
+        ----------
+        data:
+            A list of ``(time, temperature)`` tuples.
+        """
+
+        if not data:
+            logger.warning("No data to store in the database.")
+            return
+
+        df = pd.DataFrame(data, columns=["time", "temperature"])
+        df.insert(0, "id", range(1, len(df) + 1))
+
+        with self.db.connect() as conn:
+            conn.execute("DELETE FROM temperature_curve")
+            df.to_sql("temperature_curve", conn, if_exists="append", index=False)
+
+        logger.info(f"Inserted {len(data)} records into temperature_curve.")
+
+    def parse_and_store_tables(self):
+        data = self.parse()
+        self.store_fire_curve(data)
 
 # ---------------------------------------------------------------------------
 # XML parser
@@ -102,8 +129,9 @@ class XmlParser:
         n_nodes = int(root.SAFIR_RESULTS.NNODE)
     """
 
-    def __init__(self, xml_path: str) -> None:
+    def __init__(self, xml_path: str, db: object) -> None:
         self.xml_path = os.path.abspath(xml_path)
+        self.db = db  # Database manager instance
 
     def parse(self):
         """Parse the XML file and return the ``lxml.objectify`` root element.
@@ -128,6 +156,8 @@ class XmlParser:
                 f"SAFIR XML file not found: {self.xml_path}"
             )
 
+        line_count = 0  # Initialize line counter
+
         parser = objectify.makeparser(
             huge_tree=True,
             recover=True,
@@ -142,23 +172,43 @@ class XmlParser:
         with open(self.xml_path, "rb") as f:
             parser.feed(b"<ROOT>")
             for chunk in iter(lambda: f.read(1 << 20), b""):
+                line_count += chunk.count(b"\n")  # Count newlines in the chunk
                 parser.feed(chunk)
             parser.feed(b"</ROOT>")
-            root = parser.close()
+            line_count += 1  # Account for the virtual root wrapper
+        root = parser.close()
 
         logger.info("Parsed XML file: %s", self.xml_path)
+        logger.info("Total lines parsed: %.2f million", line_count / 1_000_000)  # Log total lines parsed
         return root
 
-        def parse_vector2(self, text):
-            try:
-                parts = text.strip().split()
-                return float(parts[0]), float(parts[1])
-            except:
-                return None, None
+    def insert_timestamp(self, time: float) -> int:
+        """Insert *time* into the ``timestamps`` table (or ignore duplicate).
 
-        def parse_vector3(self, text_element):
-            try:
-                parts = str(text_element).strip().split()
-                return float(parts[0]), float(parts[1]), float(parts[2])
-            except:
-                return None, None, None
+        Returns
+        -------
+        int
+            The ``id`` of the inserted or existing row.
+        """
+        with self.db.connect() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT OR IGNORE INTO timestamps (time) VALUES (?)", (time,)
+            )
+            cur.execute("SELECT id FROM timestamps WHERE time = ?", (time,))
+            row = cur.fetchone()
+            return row[0]
+
+    def parse_vector2(self, text):
+        try:
+            parts = text.strip().split()
+            return float(parts[0]), float(parts[1])
+        except:
+            return None, None
+
+    def parse_vector3(self, text_element):
+        try:
+            parts = str(text_element).strip().split()
+            return float(parts[0]), float(parts[1]), float(parts[2])
+        except:
+            return None, None, None
