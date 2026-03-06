@@ -60,7 +60,15 @@ PostProcessor-SAFIR/
 │   ├── 8_3D-Struct-Slab-MohrStress-Plotter/
 │   └── 9_3D-Struct-Slab-Stress-Plotter/
 │
-├── SAFIR-Dashboard/                 # Streamlit multi-tool dashboard
+├── SAFIR-Dashboard/                 # Dashboard apps (Streamlit + Bokeh)
+│   ├── Streamlit.py                 # Simple upload-based Streamlit dashboard
+│   ├── streamlitv2.py               # Advanced 2-D thermal Streamlit dashboard
+│   └── bokeh_app/                   # High-performance Bokeh server dashboard
+│       ├── cache_db.py              # Temp SQLite cache DB lifecycle
+│       ├── data_loader.py           # Cache DB → DataFrame queries
+│       ├── plots.py                 # Bokeh figure builders
+│       ├── main.py                  # Bokeh curdoc() entry point
+│       └── server.py                # CLI launcher (cache + bokeh serve)
 │
 ├── docs/
 │   ├── ARCHITECTURE.md              # Module relationships & data flow
@@ -98,11 +106,71 @@ PostProcessor-SAFIR/
 
 ### SAFIR-Dashboard
 
-A single Streamlit app (`SAFIR-Dashboard/Streamlit.py`) that accepts any SAFIR `.db` file and provides node displacement, beam force, and temperature–time tabs.
+#### Streamlit apps (legacy)
+
+| Script | Description |
+|---|---|
+| `SAFIR-Dashboard/Streamlit.py` | Simple upload-based dashboard |
+| `SAFIR-Dashboard/streamlitv2.py` | Advanced 2-D thermal section viewer |
 
 ```bash
 streamlit run SAFIR-Dashboard/Streamlit.py
+# or
+streamlit run SAFIR-Dashboard/streamlitv2.py
 ```
+
+#### Bokeh app (recommended)
+
+A high-performance Bokeh server dashboard located in
+`SAFIR-Dashboard/bokeh_app/`.  It uses a **temporary cache database** to
+keep the source `.db` file untouched and deliver fast, low-latency charts.
+
+**Architecture**
+
+```
+server.py
+  │  1. CacheDatabase.build()  →  temp SQLite copy of source DB
+  │  2. bokeh serve main.py    →  Bokeh server process
+  │       ├─ DataLoader        →  queries cache DB → DataFrames
+  │       ├─ plots.*           →  pure Bokeh figure builders
+  │       └─ curdoc()          →  widgets + callbacks
+  └─ CacheDatabase.close()     →  delete temp DB on exit
+
+Tabs
+  ├─ Section Viewer   – 2-D thermal colour-map of cross-section
+  ├─ Material Summary – avg / max temperature per material vs. time
+  └─ Node History     – single-node temperature history + fire curve
+```
+
+**Module overview**
+
+| File | Responsibility |
+|---|---|
+| `bokeh_app/cache_db.py` | Build & teardown the temporary SQLite cache DB |
+| `bokeh_app/data_loader.py` | Execute queries against the cache DB |
+| `bokeh_app/plots.py` | Pure Bokeh figure builders (section, material, node) |
+| `bokeh_app/main.py` | Bokeh `curdoc()` document – widgets & callbacks |
+| `bokeh_app/server.py` | CLI launcher: cache lifecycle + `bokeh serve` |
+
+**Usage**
+
+```bash
+# Recommended: use the server launcher
+python SAFIR-Dashboard/bokeh_app/server.py --db path/to/results.db
+
+# Custom port / no browser
+python SAFIR-Dashboard/bokeh_app/server.py \
+    --db path/to/results.db \
+    --port 5007 \
+    --no-browser
+
+# Advanced: run bokeh serve directly (set env var manually)
+export SAFIR_CACHE_DB=/tmp/safir_cache_xxx.db
+bokeh serve SAFIR-Dashboard/bokeh_app/main.py --show
+```
+
+The temporary cache database is automatically **deleted** when the server
+process exits (whether by Ctrl-C or closing the browser).
 
 ---
 
