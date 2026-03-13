@@ -311,6 +311,15 @@ def _update_field(attr=None, old=None, new=None) -> None:  # noqa: ANN001
         time_label_div.text = f"<b>t = {t:.1f} s</b>" if t is not None else ""
         return
 
+    # Filter out rows with NaN temperatures (no data for this timestep)
+    df = df.dropna(subset=["temperature"])
+
+    if df.empty:
+        field_source.data = {"x": [], "y": [], "temperature": [], "node_id": []}
+        field_info_div.text = f"<b>Section {sec}</b> – no thermal data found for this time step."
+        time_label_div.text = f"<b>t = {t:.1f} s</b>" if t is not None else ""
+        return
+
     temps = df["temperature"].tolist()
     t_min = min(temps)
     t_max = max(temps)
@@ -429,7 +438,7 @@ else:
     status_div.text = (
         '<span style="color:#856404;font-size:0.85rem;">'
         "⚠ No thermal data found in the database. "
-        "Expected tables: <code>thermal_nodes</code>, <code>thermal_temperatures</code>, "
+        "Expected tables: <code>node_coordinates</code>, <code>node_temperatures</code>, "
         "<code>timestamps</code>."
         "</span>"
     )
