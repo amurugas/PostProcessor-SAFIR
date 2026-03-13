@@ -14,6 +14,7 @@
 !requirements*.txt
 !.env.example
 !Makefile
+!*.bat
 
 # common python junk
 .venv/
