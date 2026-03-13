@@ -36,4 +36,9 @@ bokeh serve viewer\app.py ^
     --port 5006 ^
     --allow-websocket-origin=*
 
+REM NOTE: --allow-websocket-origin=* allows connections from any host on the
+REM       network. This is appropriate for a dedicated local-network PC.
+REM       For tighter security, replace * with the exact hostname or IP, e.g.:
+REM         --allow-websocket-origin=192.168.1.100:5006
+
 pause
