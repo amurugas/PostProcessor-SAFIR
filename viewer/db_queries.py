@@ -7,16 +7,27 @@ Every public function accepts a ``db_path`` string and returns a
 :class:`pandas.DataFrame`.  SQL **must not** appear inside widget
 callback code – use only these helpers there.
 
-Assumed schema (3-D structural SAFIR database)
+Actual schema (3-D structural SAFIR database)
 ----------------------------------------------
 timestamps          id, time
-node_coordinates    node_id, x, y, z
-beam_nodes          beam_id, beam_tag, N1, N2, N3, N4
-beam_section        beam_tag, section
-node_displacements  timestamp_id, node_id, D1, D2, D3, D4, D5, D6, D7
-beam_forces         timestamp_id, beam_id, gauss_point, N, Mz, My, Vz, Vy
-beam_fiber_stresses timestamp_id, beam_id, gauss_point, fiber_index, stress
-beam_fiber_strains  timestamp_id, beam_id, gauss_point, fiber_index, strain
+beam_section        id, beam_tag, section
+material_list       id, material_tag, material_name
+shell_section       id, shell_tag, section
+temperature_curve   id, time, temperature
+model_data          id, name, value, description
+node_coordinates    id, node_id, x, y, z
+beam_fiber_strains  id, timestamp_id, beam_id, gauss_point, fiber_index, strain
+beam_nodes          id, beam_id, N1, N2, N3, N4, beam_tag
+rebar_strains       id, timestamp_id, shell_id, nga, rebar_id, eps_sx, eps_sy
+shell_loads         id, load_id, shell_id, N1, N2, N3, P1, P2, P3, shell_tag
+shell_nodes         id, shell_id, N1, N2, N3, N4, shell_tag
+node_fixity         id, node_id, DOF1, DOF2, DOF3, DOF4, DOF5, DOF6, DOF7
+node_displacements  id, timestamp_id, node_id, D1, D2, D3, D4, D5, D6, D7
+reactions           id, timestamp_id, node_id, R1, R2, R3, R4, R5, R6, R7
+beam_fiber_stresses id, timestamp_id, beam_id, gauss_point, fiber_index, stress
+beam_forces         id, timestamp_id, beam_id, gauss_point, N, Mz, My, Mw, Mr2, Vz, Vy
+shell_strains       id, timestamp_id, shell_id, integration_point, thickness,
+                    Sx, Sy, Sz, Px, Py, Pz, Dx, Dy, Dz
 """
 
 from __future__ import annotations
@@ -67,6 +78,10 @@ def get_beam_list(db_path: str) -> pd.DataFrame:
 
     Columns: ``beam_id``, ``section``
     """
+    if not (_table_exists(db_path, "beam_nodes") and
+            _table_exists(db_path, "beam_section")):
+        return pd.DataFrame(columns=["beam_id", "section"])
+
     return _query(
         db_path,
         """
@@ -84,6 +99,9 @@ def get_node_list(db_path: str) -> pd.DataFrame:
 
     Columns: ``node_id``, ``x``, ``y``, ``z``
     """
+    if not _table_exists(db_path, "node_coordinates"):
+        return pd.DataFrame(columns=["node_id", "x", "y", "z"])
+
     return _query(
         db_path,
         "SELECT node_id, x, y, z FROM node_coordinates ORDER BY node_id",
@@ -99,6 +117,10 @@ def get_beam_force_history(
 
     Columns: ``time``, ``N``, ``Mz``, ``My``, ``Vz``, ``Vy``
     """
+    if not (_table_exists(db_path, "beam_forces") and
+            _table_exists(db_path, "timestamps")):
+        return pd.DataFrame(columns=["time", "N", "Mz", "My", "Vz", "Vy"])
+
     return _query(
         db_path,
         """
@@ -118,6 +140,10 @@ def get_node_displacement_history(db_path: str, node_id: int) -> pd.DataFrame:
 
     Columns: ``time``, ``D1``, ``D2``, ``D3``
     """
+    if not (_table_exists(db_path, "node_displacements") and
+            _table_exists(db_path, "timestamps")):
+        return pd.DataFrame(columns=["time", "D1", "D2", "D3"])
+
     return _query(
         db_path,
         """

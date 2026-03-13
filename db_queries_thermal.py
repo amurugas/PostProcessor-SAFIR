@@ -9,9 +9,17 @@ callback code – use only these helpers there.
 
 Actual schema (2-D thermal SAFIR database)
 -------------------------------------------
-timestamps              id, time
-node_coordinates        node_id, x, y
-node_temperatures       timestamp_id, node_id, Temperature
+timestamps                      id, time
+material_list                   id, material_tag, material_name
+temperature_curve               id, time, temperature
+model_data                      id, name, value, description
+node_coordinates                id, node_id, x, y
+node_temperatures               id, timestamp_id, node_id, Temperature
+solid_mesh                      id, solid_id, N1, N2, N3, N4, material_tag
+frontiers                       id, solid_id, face1, face2, face3, face4
+vw_solid_nodes                  solid_id, material_tag, node_id
+vw_material_temperature_summary material_id, material_section_lookup, timestep,
+                                avg_temp_material, max_temp_material
 """
 
 from __future__ import annotations
