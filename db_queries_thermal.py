@@ -7,12 +7,11 @@ Every public function accepts a ``db_path`` string and returns a
 :class:`pandas.DataFrame`.  SQL **must not** appear inside widget
 callback code – use only these helpers there.
 
-Assumed schema (2-D thermal SAFIR database)
+Actual schema (2-D thermal SAFIR database)
 -------------------------------------------
 timestamps              id, time
-thermal_nodes           node_id, section_id, x, y
-thermal_elements        element_id, section_id
-thermal_temperatures    timestamp_id, node_id, temperature
+node_coordinates        node_id, x, y
+node_temperatures       timestamp_id, node_id, Temperature
 """
 
 from __future__ import annotations
@@ -72,16 +71,19 @@ def _list_tables(db_path: str) -> list[str]:
 def get_thermal_sections(db_path: str) -> pd.DataFrame:
     """Return distinct section IDs available in the thermal database.
 
-    Returns a DataFrame with at least a ``section_id`` column.
+    Since the actual schema does not have a ``section_id`` column, a single
+    default section (id = 1) is returned whenever ``node_coordinates`` exists
+    and contains at least one row.
+
+    Returns a DataFrame with a ``section_id`` column.
     Falls back gracefully if the expected table is absent.
 
     Columns: ``section_id``
     """
-    if _table_exists(db_path, "thermal_nodes"):
-        return _query(
-            db_path,
-            "SELECT DISTINCT section_id FROM thermal_nodes ORDER BY section_id",
-        )
+    if _table_exists(db_path, "node_coordinates"):
+        result = _query(db_path, "SELECT COUNT(*) as cnt FROM node_coordinates")
+        if not result.empty and result.iloc[0]["cnt"] > 0:
+            return pd.DataFrame({"section_id": [1]})
     # Fallback: return empty frame so the UI can handle it cleanly
     return pd.DataFrame(columns=["section_id"])
 
@@ -106,30 +108,30 @@ def get_temperature_grid(
     Parameters
     ----------
     section_id:
-        Section / element group identifier.
+        Section / element group identifier (unused in this schema, kept for
+        API compatibility).
     timestep_id:
         Primary key of the ``timestamps`` row.
 
     Columns: ``node_id``, ``x``, ``y``, ``temperature``
     """
-    if not (_table_exists(db_path, "thermal_nodes") and
-            _table_exists(db_path, "thermal_temperatures")):
+    if not (_table_exists(db_path, "node_coordinates") and
+            _table_exists(db_path, "node_temperatures")):
         return pd.DataFrame(columns=["node_id", "x", "y", "temperature"])
 
     return _query(
         db_path,
         """
-        SELECT  tn.node_id,
-                tn.x,
-                tn.y,
-                tt.temperature
-        FROM    thermal_nodes tn
-        JOIN    thermal_temperatures tt ON tt.node_id = tn.node_id
-        WHERE   tn.section_id   = ?
-          AND   tt.timestamp_id = ?
-        ORDER   BY tn.node_id
+        SELECT  nc.node_id,
+                nc.x,
+                nc.y,
+                nt.Temperature as temperature
+        FROM    node_coordinates nc
+        JOIN    node_temperatures nt ON nt.node_id = nc.node_id
+        WHERE   nt.timestamp_id = ?
+        ORDER   BY nc.node_id
         """,
-        (section_id, timestep_id),
+        (timestep_id,),
     )
 
 
@@ -143,47 +145,49 @@ def get_temperature_history(
     Parameters
     ----------
     section_id:
-        Section / element group identifier (used to validate node membership).
+        Section / element group identifier (unused in this schema, kept for
+        API compatibility).
     node_id:
         Node identifier.
 
     Columns: ``time``, ``temperature``
     """
     if not (_table_exists(db_path, "timestamps") and
-            _table_exists(db_path, "thermal_temperatures")):
+            _table_exists(db_path, "node_temperatures")):
         return pd.DataFrame(columns=["time", "temperature"])
 
     return _query(
         db_path,
         """
         SELECT  ts.time,
-                tt.temperature
-        FROM    thermal_temperatures tt
-        JOIN    timestamps ts ON ts.id = tt.timestamp_id
-        JOIN    thermal_nodes tn  ON tn.node_id = tt.node_id
-        WHERE   tt.node_id  = ?
-          AND   tn.section_id = ?
+                nt.Temperature as temperature
+        FROM    node_temperatures nt
+        JOIN    timestamps ts ON ts.id = nt.timestamp_id
+        WHERE   nt.node_id = ?
         ORDER   BY ts.time
         """,
-        (node_id, section_id),
+        (node_id,),
     )
 
 
 def get_node_list_for_section(db_path: str, section_id: int | str) -> pd.DataFrame:
     """Return all node IDs and coordinates for a given section.
 
+    Parameters
+    ----------
+    section_id:
+        Section identifier (unused in this schema, kept for API compatibility).
+
     Columns: ``node_id``, ``x``, ``y``
     """
-    if not _table_exists(db_path, "thermal_nodes"):
+    if not _table_exists(db_path, "node_coordinates"):
         return pd.DataFrame(columns=["node_id", "x", "y"])
 
     return _query(
         db_path,
         """
         SELECT node_id, x, y
-        FROM   thermal_nodes
-        WHERE  section_id = ?
+        FROM   node_coordinates
         ORDER  BY node_id
         """,
-        (section_id,),
     )
