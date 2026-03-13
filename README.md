@@ -174,7 +174,100 @@ process exits (whether by Ctrl-C or closing the browser).
 
 ---
 
-## Using the Shared Utilities
+## FastAPI Web Shell
+
+A lightweight web front-end built with **FastAPI** that wraps the existing
+Bokeh structural viewer.
+
+**What it adds**
+
+- A browser landing page at `http://localhost:8000`
+- A case-picker dropdown (scans a local folder for `.db` files)
+- The selected SAFIR case is passed to the Bokeh server, which renders the
+  interactive plots inside the same page
+
+**Stack**
+
+| Component | Role | Port |
+|-----------|------|------|
+| FastAPI | Landing page, case picker | 8000 |
+| Bokeh Server | Interactive plots | 5006 |
+| SQLite | Case data | – |
+
+### Folder layout
+
+Arrange your SAFIR cases like this:
+
+```
+%USERPROFILE%\SAFIR\Cases\
+    Case_001\Raw.db
+    Case_002\Raw.db
+    Case_003\Raw.db
+```
+
+Each sub-folder must contain exactly one `*.db` SQLite file built from your
+SAFIR structural results.  The path can be anywhere on disk; update
+`SAFIR_CASES_DIR` in `launch_fastapi.bat` (or set the env var) to point to it.
+
+### Running on Windows
+
+**Step 1 – install dependencies** (one-time)
+
+```bat
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+**Step 2 – edit the cases path** in `launch_fastapi.bat`:
+
+```bat
+SET SAFIR_CASES_DIR=D:\SAFIR\Cases
+```
+
+**Step 3 – start the Bokeh server** (first terminal):
+
+```bat
+launch_bokeh.bat
+```
+
+**Step 4 – start FastAPI** (second terminal):
+
+```bat
+launch_fastapi.bat
+```
+
+**Step 5 – open the browser**:
+
+```
+http://localhost:8000
+```
+
+Select a case from the dropdown.  The Bokeh plots load below the header.
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SAFIR_CASES_DIR` | `~/SAFIR/Cases` | Root folder scanned for cases |
+| `BOKEH_URL` | `http://localhost:5006/app` | Bokeh server URL |
+| `SAFIR_DB_PATH` | `Raw.db` | Fallback DB for standalone Bokeh use |
+
+### Manual launch (without .bat files)
+
+```bat
+REM Terminal 1 – Bokeh
+.venv\Scripts\bokeh serve viewer\app.py ^
+    --port 5006 ^
+    --allow-websocket-origin=*
+
+REM Terminal 2 – FastAPI
+set SAFIR_CASES_DIR=D:\SAFIR\Cases
+.venv\Scripts\uvicorn fastapi_app:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+
 
 ```python
 from shared.database import StructuralDatabaseManager

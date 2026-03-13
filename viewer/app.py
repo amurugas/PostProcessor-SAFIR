@@ -55,6 +55,21 @@ for _i, _arg in enumerate(_args):
         db_path = _args[_i + 1]
         break
 
+# When embedded via FastAPI / server_document, the database path is passed as
+# a URL query argument ``?db=<path>``.  This is checked after the CLI flag so
+# that an explicit --args --db value still wins.
+try:
+    _sc = curdoc().session_context
+    if _sc is not None:
+        _sc_db = _sc.request.arguments.get("db", [b""])[0]
+        if _sc_db:
+            _sc_db_str = _sc_db.decode("utf-8") if isinstance(_sc_db, bytes) else str(_sc_db)
+            if _sc_db_str:
+                db_path = _sc_db_str
+                logger.info("Database path from session URL arg: %s", db_path)
+except Exception as _exc:  # noqa: BLE001
+    logger.debug("Could not read session_context URL args: %s", _exc)
+
 logger.info("Using database: %s", db_path)
 
 # ---------------------------------------------------------------------------
