@@ -1,35 +1,40 @@
 """
 fastapi_app.py
 ~~~~~~~~~~~~~~
-FastAPI web shell for the SAFIR Structural Results Viewer.
+FastAPI web shell for the SAFIR Results Viewer.
 
 This module provides:
-- A landing page (``/``) with a case-picker dropdown
+- A landing page (``/``) with a case-picker dropdown and viewer-type selector
 - Discovery of SAFIR cases from a local folder tree
-- Embedding of the Bokeh structural viewer for the selected case
+- Embedding of either the Bokeh structural viewer or the Bokeh thermal viewer
+  for the selected case
 
 Architecture
 ------------
 - FastAPI (port 8000) – web shell, landing page, case list
-- Bokeh Server (port 5006) – interactive structural plots
+- Bokeh Server (port 5006) – interactive structural plots  (``/app``)
+                           – interactive thermal plots    (``/main``)
 
 Start both servers before opening the browser (see ``launch_fastapi.bat``
 and ``launch_bokeh.bat`` for Windows convenience scripts).
 
 Configuration
 -------------
-SAFIR_CASES_DIR  Root folder that contains one sub-folder per case.
-                 Each sub-folder must contain exactly one ``*.db`` file.
-                 Default: ``D:\\SAFIR\\Cases``
+SAFIR_CASES_DIR      Root folder that contains one sub-folder per case.
+                     Each sub-folder must contain exactly one ``*.db`` file.
+                     Default: ``<home>/SAFIR/Cases``
 
-BOKEH_URL        Full URL of the running Bokeh app.
-                 Default: ``http://localhost:5006/app``
+BOKEH_URL            Full URL of the Bokeh structural app.
+                     Default: ``http://localhost:5006/app``
+
+BOKEH_THERMAL_URL    Full URL of the Bokeh thermal app.
+                     Default: ``http://localhost:5006/main``
 
 Example layout
 --------------
-D:\\SAFIR\\Cases\\
-    Case_001\\Raw.db
-    Case_002\\Raw.db
+<home>/SAFIR/Cases/
+    Case_001/Raw.db
+    Case_002/Raw.db
     ...
 """
 
@@ -50,6 +55,7 @@ from fastapi.templating import Jinja2Templates
 
 CASES_DIR: str = os.environ.get("SAFIR_CASES_DIR", str(Path.home() / "SAFIR" / "Cases"))
 BOKEH_URL: str = os.environ.get("BOKEH_URL", "http://localhost:5006/app")
+BOKEH_THERMAL_URL: str = os.environ.get("BOKEH_THERMAL_URL", "http://localhost:5006/main")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,7 +69,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent
 
-app = FastAPI(title="SAFIR Structural Results Viewer")
+app = FastAPI(title="SAFIR Results Viewer")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
@@ -117,6 +123,7 @@ def discover_cases(cases_root: str) -> list[dict[str, str]]:
 async def landing_page(
     request: Request,
     case: str = Query(default="", description="Selected case name"),
+    viewer: str = Query(default="structural", description="Viewer type: 'structural' or 'thermal'"),
 ) -> HTMLResponse:
     """Render the landing page.
 
@@ -125,9 +132,14 @@ async def landing_page(
     case : str
         Name of the selected case folder.  Omit or leave blank to show the
         picker without loading a viewer.
+    viewer : str
+        Which viewer to load: ``'structural'`` (default) or ``'thermal'``.
     """
     cases = discover_cases(CASES_DIR)
     case_map: dict[str, str] = {c["name"]: c["db_path"] for c in cases}
+
+    # Normalise viewer type
+    viewer = viewer if viewer in ("structural", "thermal") else "structural"
 
     bokeh_script: str | None = None
     selected_case_info: dict[str, str] | None = None
@@ -146,22 +158,29 @@ async def landing_page(
                 )
                 logger.warning("DB missing for case '%s': %s", case, db_path)
             else:
+                bokeh_url = BOKEH_THERMAL_URL if viewer == "thermal" else BOKEH_URL
                 try:
                     bokeh_script = server_document(
-                        url=BOKEH_URL,
+                        url=bokeh_url,
                         arguments={"db": db_path},
                     )
                     selected_case_info = {"name": case, "db_path": db_path}
                 except OSError as exc:
-                    logger.error("Network error connecting to Bokeh for case '%s': %s", case, exc)
+                    logger.error(
+                        "Network error connecting to Bokeh (%s) for case '%s': %s",
+                        bokeh_url, case, exc,
+                    )
+                    viewer_label = "thermal" if viewer == "thermal" else "structural"
                     error_message = (
-                        f"Could not connect to the Bokeh server at {BOKEH_URL}. "
+                        f"Could not connect to the Bokeh {viewer_label} server at {bokeh_url}. "
                         "Make sure it is running (see launch_bokeh.bat)."
                     )
                 except Exception as exc:  # noqa: BLE001
-                    logger.error("Failed to create Bokeh embed for case '%s': %s", case, exc)
+                    logger.error(
+                        "Failed to create Bokeh embed for case '%s': %s", case, exc
+                    )
                     error_message = (
-                        f"Failed to load the viewer for case '{case}'. "
+                        f"Failed to load the {viewer} viewer for case '{case}'. "
                         f"Check the server logs for details. ({type(exc).__name__})"
                     )
 
@@ -171,6 +190,7 @@ async def landing_page(
             "request": request,
             "cases": cases,
             "selected_case": case,
+            "selected_viewer": viewer,
             "selected_case_info": selected_case_info,
             "bokeh_script": bokeh_script,
             "error_message": error_message,

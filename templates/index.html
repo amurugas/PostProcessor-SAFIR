@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAFIR Structural Results Viewer</title>
+  <title>SAFIR Results Viewer</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -30,7 +30,7 @@
       padding: 0.85rem 2rem;
       display: flex;
       align-items: flex-end;
-      gap: 1rem;
+      gap: 1.5rem;
       flex-wrap: wrap;
     }
     .controls label {
@@ -50,6 +50,32 @@
       cursor: pointer;
     }
     .controls select:focus { outline: 2px solid #c91919; outline-offset: 1px; }
+
+    /* ── Viewer type radio group ─────────────────────────────────────────── */
+    .viewer-type-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .viewer-type-radios {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.25rem;
+    }
+    .viewer-type-radios label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.92rem;
+      font-weight: 400;
+      color: #333;
+      cursor: pointer;
+      margin-bottom: 0;
+    }
+    .viewer-type-radios input[type="radio"] {
+      accent-color: #c91919;
+      cursor: pointer;
+    }
+
     .controls .hint {
       font-size: 0.75rem;
       color: #888;
@@ -96,25 +122,52 @@
 
 <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
 <div class="header">
-  <h1>SAFIR Structural Results Viewer</h1>
-  <p>Interactive viewer for SAFIR 3-D structural fire analysis results</p>
+  <h1>SAFIR Results Viewer</h1>
+  <p>Interactive viewer for SAFIR structural and 2-D thermal fire analysis results</p>
 </div>
 
 <!-- ══ Controls ════════════════════════════════════════════════════════════ -->
 <div class="controls">
   <form method="GET" action="/">
-    <label for="case-select">SAFIR Case</label>
-    <select id="case-select" name="case" onchange="this.form.submit()">
-      <option value="">— select a case —</option>
-      {% for c in cases %}
-      <option value="{{ c.name }}"{% if c.name == selected_case %} selected{% endif %}>
-        {{ c.name }}
-      </option>
-      {% endfor %}
-    </select>
-    <noscript>
-      <button type="submit" style="margin-left:0.5rem;padding:0.38rem 0.9rem;background:#c91919;color:#fff;border:none;border-radius:4px;cursor:pointer;">Load</button>
-    </noscript>
+    <div style="display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;">
+
+      <!-- Case picker -->
+      <div>
+        <label for="case-select">SAFIR Case</label>
+        <select id="case-select" name="case" onchange="this.form.submit()">
+          <option value="">— select a case —</option>
+          {% for c in cases %}
+          <option value="{{ c.name }}"{% if c.name == selected_case %} selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Viewer type -->
+      <div class="viewer-type-group">
+        <label>Viewer Type</label>
+        <div class="viewer-type-radios">
+          <label>
+            <input type="radio" name="viewer" value="structural"
+              {% if selected_viewer != "thermal" %}checked{% endif %}
+              onchange="this.form.submit()">
+            Structural Results
+          </label>
+          <label>
+            <input type="radio" name="viewer" value="thermal"
+              {% if selected_viewer == "thermal" %}checked{% endif %}
+              onchange="this.form.submit()">
+            Thermal Results
+          </label>
+        </div>
+      </div>
+
+      <noscript>
+        <button type="submit" style="margin-left:0.5rem;padding:0.38rem 0.9rem;background:#c91919;color:#fff;border:none;border-radius:4px;cursor:pointer;">Load</button>
+      </noscript>
+
+    </div>
   </form>
 
   {% if cases %}
@@ -134,6 +187,7 @@
 <div class="info-bar">
   <b>{{ selected_case_info.name }}</b>
   &nbsp;|&nbsp; <code>{{ selected_case_info.db_path }}</code>
+  &nbsp;|&nbsp; {{ "Thermal" if selected_viewer == "thermal" else "Structural" }} viewer
 </div>
 {% endif %}
 
