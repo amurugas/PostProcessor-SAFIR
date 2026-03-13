@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  SAFIR Structural Results Viewer – Windows Launch Script
+REM  SAFIR Results Viewer – Windows Launch Script
 REM ============================================================
 REM
 REM  Usage:
@@ -15,23 +15,26 @@ REM         launch.bat
 REM    b) Edit the DB_PATH line below.
 REM
 REM  The app will be accessible from other machines on the local
-REM  network at http://<this-PC-hostname>:5006/app
+REM  network at http://<this-PC-hostname>:5006/app  (structural)
+REM                                              or /main (thermal)
 REM ============================================================
 
 REM --- (Optional) Set the default database path here ----------
 REM set SAFIR_DB_PATH=C:\path\to\Raw.db
 
-REM --- Launch Bokeh server -------------------------------------
-echo Starting SAFIR Structural Viewer...
+REM --- Launch Bokeh server with both viewers -------------------
+echo Starting SAFIR Results Viewer...
 echo.
-echo Access the viewer at:
-echo   http://localhost:5006/app          (this machine)
-echo   http://<your-PC-IP>:5006/app       (other machines on the network)
+echo Access the viewers at:
+echo   http://localhost:5006/app          (structural – this machine)
+echo   http://localhost:5006/main         (thermal    – this machine)
+echo   http://<your-PC-IP>:5006/app       (structural – other machines)
+echo   http://<your-PC-IP>:5006/main      (thermal    – other machines)
 echo.
 echo Press Ctrl+C to stop the server.
 echo.
 
-bokeh serve viewer\app.py ^
+bokeh serve viewer\app.py bokeh_thermal\main.py ^
     --show ^
     --port 5006 ^
     --allow-websocket-origin=*

@@ -14,14 +14,16 @@ REM Set SAFIR_CASES_DIR to the root folder that contains one
 REM sub-folder per case.  Each sub-folder must have a *.db file.
 SET SAFIR_CASES_DIR=%USERPROFILE%\SAFIR\Cases
 
-REM Bokeh server URL (leave as-is for local single-machine setup)
+REM Bokeh server URLs (leave as-is for local single-machine setup)
 SET BOKEH_URL=http://localhost:5006/app
+SET BOKEH_THERMAL_URL=http://localhost:5006/main
 
 echo =======================================================
-echo  SAFIR Structural Results Viewer  --  FastAPI Server
-echo  URL         : http://localhost:8000
-echo  Cases dir   : %SAFIR_CASES_DIR%
-echo  Bokeh URL   : %BOKEH_URL%
+echo  SAFIR Results Viewer  --  FastAPI Server
+echo  URL              : http://localhost:8000
+echo  Cases dir        : %SAFIR_CASES_DIR%
+echo  Structural Bokeh : %BOKEH_URL%
+echo  Thermal Bokeh    : %BOKEH_THERMAL_URL%
 echo =======================================================
 echo.
 echo Make sure launch_bokeh.bat is already running.
