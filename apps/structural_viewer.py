@@ -5,19 +5,22 @@ SAFIR Structural Results Viewer – Bokeh Server application.
 
 Launch with::
 
-    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=*
+    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=* --port 5007
 
 To specify the database path use the environment variable or the Bokeh
 ``--args`` flag::
 
     set SAFIR_DB_PATH=C:\\path\\to\\Raw.db
-    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=*
+    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=* --port 5007
 
     # -- or --
-    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=* --args --db C:\\path\\to\\Raw.db
+    bokeh serve apps/structural_viewer.py --show --allow-websocket-origin=* --port 5007 ^
+        --args --db C:\\path\\to\\Raw.db
+
+When embedded via FastAPI (``apps/fastapi_structural.py``), the database path
+is passed as the ``db`` URL argument.
 
 All SQL queries are kept in ``database/queries_structural.py``.
-Configuration lives in ``viewer/config.py``.
 """
 
 import logging
@@ -44,13 +47,7 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-# viewer/config.py is also needed; add the viewer directory to sys.path
-_VIEWER_DIR = os.path.join(_ROOT, "viewer")
-if _VIEWER_DIR not in sys.path:
-    sys.path.insert(0, _VIEWER_DIR)
-
 import database.queries_structural as db_queries  # noqa: E402
-import config  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,10 +56,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Configuration (inline – no external config module required)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_GAUSS_POINT: int = 1
+
+# ---------------------------------------------------------------------------
 # Resolve database path
 # ---------------------------------------------------------------------------
 
-db_path: str = config.DB_PATH
+db_path: str = os.environ.get("SAFIR_DB_PATH", "Raw.db")
 
 # Support --args --db <path> on the Bokeh CLI
 _args = sys.argv[1:]
@@ -193,7 +196,7 @@ def _update_beam_force(attr, old, new) -> None:  # noqa: ANN001
         return
     try:
         df = db_queries.get_beam_force_history(
-            db_path, int(bid), config.DEFAULT_GAUSS_POINT
+            db_path, int(bid), _DEFAULT_GAUSS_POINT
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("beam_force query failed for beam %s: %s", bid, exc)
@@ -213,7 +216,7 @@ def _update_beam_force(attr, old, new) -> None:  # noqa: ANN001
     section = row_match["section"].iloc[0] if not row_match.empty else "N/A"
     beam_section_div.text = (
         f'<b>Beam {bid}</b> – section: <code>{section}</code>'
-        f' &nbsp;|&nbsp; Gauss point: {config.DEFAULT_GAUSS_POINT}'
+        f' &nbsp;|&nbsp; Gauss point: {_DEFAULT_GAUSS_POINT}'
         f' &nbsp;|&nbsp; {len(df)} time steps'
     )
     force_fig.title.text = f"Beam Force vs Time  (Beam {bid})"
@@ -362,7 +365,7 @@ def _update_fiber(attr, old, new) -> None:  # noqa: ANN001
         return
     try:
         df = db_queries.get_fiber_data(
-            db_path, int(bid), config.DEFAULT_GAUSS_POINT, ftype
+            db_path, int(bid), _DEFAULT_GAUSS_POINT, ftype
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("fiber query failed for beam %s: %s", bid, exc)
@@ -407,7 +410,7 @@ def _update_fiber(attr, old, new) -> None:  # noqa: ANN001
     fiber_fig.title.text = f"Fiber {ftype.capitalize()} vs Time  (Beam {bid})"
     fiber_info_div.text = (
         f'<b>Beam {bid}</b> – {ftype} | {len(fiber_indices)} fibers'
-        f' | Gauss point: {config.DEFAULT_GAUSS_POINT}'
+        f' | Gauss point: {_DEFAULT_GAUSS_POINT}'
         f' | {df["time"].nunique()} time steps'
     )
 

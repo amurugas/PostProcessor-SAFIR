@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAFIR Structural Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f4f4f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .header {
+      background: #1a3c8f;
+      color: #fff;
+      padding: 1rem 2rem;
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 700; }
+    .header p  { font-size: 0.82rem; margin-top: 0.2rem; opacity: 0.88; }
+
+    /* ── Controls bar ────────────────────────────────────────────────────── */
+    .controls {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .controls label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #555;
+    }
+    .controls select {
+      padding: 0.38rem 0.6rem;
+      font-size: 0.95rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      min-width: 240px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .controls select:focus { outline: 2px solid #1a3c8f; outline-offset: 1px; }
+
+    .controls .hint {
+      font-size: 0.75rem;
+      color: #888;
+      align-self: center;
+    }
+    .controls code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; }
+
+    /* ── Badge ───────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: #e3f2fd;
+      color: #0d47a1;
+      border: 1px solid #90caf9;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    /* ── Status / info bar ───────────────────────────────────────────────── */
+    .info-bar {
+      padding: 0.45rem 2rem;
+      font-size: 0.78rem;
+      color: #555;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+    }
+    .info-bar code { background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; }
+
+    /* ── Error / warning ─────────────────────────────────────────────────── */
+    .alert {
+      padding: 0.65rem 2rem;
+      font-size: 0.83rem;
+      border-bottom: 1px solid;
+    }
+    .alert-warning {
+      background: #fff3cd;
+      border-color: #ffc107;
+      color: #856404;
+    }
+
+    /* ── Viewer area ─────────────────────────────────────────────────────── */
+    .viewer { padding: 1rem 2rem; }
+
+    .placeholder {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #aaa;
+    }
+    .placeholder strong { display: block; font-size: 1rem; color: #888; margin-bottom: 0.4rem; }
+    .placeholder p  { font-size: 0.82rem; margin-top: 0.3rem; }
+    .placeholder code { background: #eee; padding: 0.1rem 0.35rem; border-radius: 3px; color: #555; }
+  </style>
+</head>
+<body>
+
+<!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <h1>SAFIR Structural Results Viewer<span class="badge">3-D Structural</span></h1>
+  <p>Interactive beam forces, node displacements and fiber results viewer for SAFIR 3-D structural analysis</p>
+</div>
+
+<!-- ══ Controls ════════════════════════════════════════════════════════════ -->
+<div class="controls">
+  <form method="GET" action="/">
+    <div style="display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;">
+
+      <!-- Case picker -->
+      <div>
+        <label for="case-select">SAFIR Case</label>
+        <select id="case-select" name="case" onchange="this.form.submit()">
+          <option value="">— select a case —</option>
+          {% for c in cases %}
+          <option value="{{ c.name }}"{% if c.name == selected_case %} selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <noscript>
+        <button type="submit" style="margin-left:0.5rem;padding:0.38rem 0.9rem;background:#1a3c8f;color:#fff;border:none;border-radius:4px;cursor:pointer;">Load</button>
+      </noscript>
+
+    </div>
+  </form>
+
+  {% if cases %}
+  <span class="hint">
+    {{ cases | length }} case(s) found in <code>{{ cases_dir }}</code>
+  </span>
+  {% endif %}
+</div>
+
+<!-- ══ Error ════════════════════════════════════════════════════════════════ -->
+{% if error_message %}
+<div class="alert alert-warning">⚠ {{ error_message }}</div>
+{% endif %}
+
+<!-- ══ Selected-case info ═══════════════════════════════════════════════════ -->
+{% if selected_case_info %}
+<div class="info-bar">
+  <b>{{ selected_case_info.name }}</b>
+  &nbsp;|&nbsp; <code>{{ selected_case_info.db_path }}</code>
+  &nbsp;|&nbsp; Structural viewer
+  &nbsp;|&nbsp; Bokeh server: <code>{{ bokeh_url }}</code>
+</div>
+{% endif %}
+
+<!-- ══ Viewer ═══════════════════════════════════════════════════════════════ -->
+<div class="viewer">
+  {% if bokeh_script %}
+    {{ bokeh_script | safe }}
+  {% elif not cases %}
+    <div class="placeholder">
+      <strong>No cases found</strong>
+      <p>Set the <code>SAFIR_CASES_DIR</code> environment variable to your cases root folder.</p>
+      <p>Current path: <code>{{ cases_dir }}</code></p>
+      <p style="margin-top:1rem;">Each sub-folder should contain one <code>.db</code> SQLite file.</p>
+      <p style="margin-top:0.8rem;">
+        Make sure the Bokeh structural server is running:<br>
+        <code>bokeh serve apps/structural_viewer.py --port 5007 --allow-websocket-origin=*</code>
+      </p>
+    </div>
+  {% else %}
+    <div class="placeholder">
+      <strong>Select a case above to load the structural viewer.</strong>
+      <p>{{ cases | length }} case(s) available.</p>
+    </div>
+  {% endif %}
+</div>
+
+</body>
+</html>
