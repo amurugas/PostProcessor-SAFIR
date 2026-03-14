@@ -15,8 +15,8 @@ REM         launch.bat
 REM    b) Edit the DB_PATH line below.
 REM
 REM  The app will be accessible from other machines on the local
-REM  network at http://<this-PC-hostname>:5006/app  (structural)
-REM                                              or /main (thermal)
+REM  network at http://<this-PC-hostname>:5006/structural_viewer
+REM                                           or /thermal_viewer
 REM ============================================================
 
 REM --- (Optional) Set the default database path here ----------
@@ -26,15 +26,15 @@ REM --- Launch Bokeh server with both viewers -------------------
 echo Starting SAFIR Results Viewer...
 echo.
 echo Access the viewers at:
-echo   http://localhost:5006/app          (structural – this machine)
-echo   http://localhost:5006/main         (thermal    – this machine)
-echo   http://<your-PC-IP>:5006/app       (structural – other machines)
-echo   http://<your-PC-IP>:5006/main      (thermal    – other machines)
+echo   http://localhost:5006/structural_viewer   (structural – this machine)
+echo   http://localhost:5006/thermal_viewer      (thermal    – this machine)
+echo   http://<your-PC-IP>:5006/structural_viewer (structural – other machines)
+echo   http://<your-PC-IP>:5006/thermal_viewer    (thermal    – other machines)
 echo.
 echo Press Ctrl+C to stop the server.
 echo.
 
-bokeh serve viewer\app.py bokeh_thermal\main.py ^
+bokeh serve apps\structural_viewer.py apps\thermal_viewer.py ^
     --show ^
     --port 5006 ^
     --allow-websocket-origin=*
@@ -45,3 +45,4 @@ REM       For tighter security, replace * with the exact hostname or IP, e.g.:
 REM         --allow-websocket-origin=192.168.1.100:5006
 
 pause
+
