@@ -101,7 +101,7 @@ def discover_cases(cases_root: str) -> list[dict[str, str]]:
         Each entry has keys ``"name"`` (folder name) and ``"db_path"``
         (absolute path to the database file).
     """
-    root = Path(cases_root)
+    root = Path(cases_root).expanduser()
     if not root.is_dir():
         logger.warning("Cases directory not found: %s", cases_root)
         return []
@@ -113,7 +113,7 @@ def discover_cases(cases_root: str) -> list[dict[str, str]]:
         db_files = sorted(entry.glob("*.db"))
         if not db_files:
             continue
-        cases.append({"name": entry.name, "db_path": str(db_files[0])})
+        cases.append({"name": entry.name, "db_path": str(db_files[0].resolve())})
 
     logger.info("Found %d case(s) in %s", len(cases), cases_root)
     return cases
