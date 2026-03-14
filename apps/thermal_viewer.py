@@ -25,7 +25,7 @@ the Bokeh ``--args`` flag::
 When embedded via FastAPI (``server_document``), the path is passed as the
 ``db`` URL argument.
 
-All SQL queries are kept in ``database/queries_thermal.py``.
+All SQL queries are kept in ``queries/queries_thermal.py``.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ from bokeh.palettes import Plasma256
 from bokeh.plotting import curdoc, figure
 
 # ---------------------------------------------------------------------------
-# Add the project root to sys.path so database.queries_thermal can be imported
+# Add the project root to sys.path so queries.queries_thermal can be imported
 # regardless of the working directory used by ``bokeh serve``.
 # ---------------------------------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -59,7 +59,7 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-import database.queries_thermal as dbq  # noqa: E402
+import queries.queries_thermal as dbq  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

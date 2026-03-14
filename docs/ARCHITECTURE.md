@@ -18,7 +18,7 @@ The project is split into **two fully independent viewer stacks**, each consisti
 │      │                                                              │
 │      ├─► Bokeh Server (port 5006)                                   │
 │      │       apps/thermal_viewer.py                                 │
-│      │       └─ database/queries_thermal.py (SQL)                   │
+│      │       └─ queries/queries_thermal.py (SQL)                   │
 │      │       └─ SQLite .db file (2-D thermal schema)                │
 │      │                                                              │
 │      └─► FastAPI (port 8000)                                        │
@@ -36,7 +36,7 @@ The project is split into **two fully independent viewer stacks**, each consisti
 │      │                                                              │
 │      ├─► Bokeh Server (port 5007)                                   │
 │      │       apps/structural_viewer.py                              │
-│      │       └─ database/queries_structural.py (SQL)                │
+│      │       └─ queries/queries_structural.py (SQL)                │
 │      │       └─ SQLite .db file (3-D structural schema)             │
 │      │                                                              │
 │      └─► FastAPI (port 8001)                                        │
@@ -62,7 +62,7 @@ PostProcessor-SAFIR/
 │   ├── fastapi_thermal.py       ← FastAPI thermal shell (port 8000)
 │   └── fastapi_structural.py    ← FastAPI structural shell (port 8001)
 │
-├── database/                    ← SQL query modules
+├── queries/                    ← SQL query modules
 │   ├── queries_thermal.py       ← Thermal DB queries
 │   └── queries_structural.py    ← Structural DB queries
 │

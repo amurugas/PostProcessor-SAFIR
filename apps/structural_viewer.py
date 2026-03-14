@@ -20,7 +20,7 @@ To specify the database path use the environment variable or the Bokeh
 When embedded via FastAPI (``apps/fastapi_structural.py``), the database path
 is passed as the ``db`` URL argument.
 
-All SQL queries are kept in ``database/queries_structural.py``.
+All SQL queries are kept in ``queries/queries_structural.py``.
 """
 
 import logging
@@ -39,7 +39,7 @@ from bokeh.models import (
 from bokeh.plotting import curdoc, figure
 
 # ---------------------------------------------------------------------------
-# Add the project root to sys.path so database.queries_structural can be
+# Add the project root to sys.path so queries.queries_structural can be
 # imported regardless of the working directory used by ``bokeh serve``.
 # ---------------------------------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +47,7 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-import database.queries_structural as db_queries  # noqa: E402
+import queries.queries_structural as db_queries  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
