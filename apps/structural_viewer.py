@@ -23,6 +23,7 @@ Configuration lives in ``viewer/config.py``.
 import logging
 import os
 import sys
+from pathlib import Path
 
 import pandas as pd
 from bokeh.layouts import column, row
@@ -86,6 +87,17 @@ except Exception as _exc:  # noqa: BLE001
     logger.debug("Could not read session_context URL args: %s", _exc)
 
 logger.info("Using database: %s", db_path)
+
+
+def _resolve_db_path(raw: str) -> str:
+    """Resolve *raw* to an absolute path and warn if the file is missing."""
+    p = Path(raw).expanduser().resolve()
+    if not p.is_file():
+        logger.warning("Database file not found at resolved path: %s", p)
+    return str(p)
+
+
+db_path = _resolve_db_path(db_path)
 
 # ---------------------------------------------------------------------------
 # Load static lists once at startup
@@ -325,7 +337,10 @@ fiber_fig.add_tools(
     HoverTool(tooltips=[("Time", "@time{0.0}"), ("Fiber", "@fiber_index"), ("Value", "@value{0.000e}")])
 )
 
-# Placeholder – lines are rebuilt in callback
+# Placeholder – lines are rebuilt in callback; this keeps the plot from
+# triggering the W-1000 "no renderers" warning when data is absent.
+_fiber_placeholder_src = ColumnDataSource(data={"time": [], "value": [], "fiber_index": []})
+fiber_fig.line("time", "value", source=_fiber_placeholder_src, line_width=0, visible=False)
 _fiber_renderers: list = []
 
 fiber_info_div = Div(

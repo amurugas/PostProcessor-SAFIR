@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from pathlib import Path
 
 import pandas as pd
 from bokeh.layouts import column, row
@@ -93,6 +94,15 @@ try:
 except Exception as _exc:  # noqa: BLE001
     logger.debug("Could not read session_context URL args: %s", _exc)
 
+def _resolve_db_path(raw: str) -> str:
+    """Resolve *raw* to an absolute path and warn if the file is missing."""
+    p = Path(raw).expanduser().resolve()
+    if not p.is_file():
+        logger.warning("Database file not found at resolved path: %s", p)
+    return str(p)
+
+
+db_path = _resolve_db_path(db_path)
 logger.info("Thermal viewer using database: %s", db_path)
 
 # ---------------------------------------------------------------------------
@@ -199,10 +209,11 @@ field_fig.add_tools(
     )
 )
 
-field_fig.circle(
+field_fig.scatter(
     "x",
     "y",
     source=field_source,
+    marker="circle",
     size=8,
     fill_color={"field": "temperature", "transform": color_mapper},
     line_color=None,
@@ -256,10 +267,11 @@ history_fig.line(
     line_width=2,
     color="#c91919",
 )
-history_fig.circle(
+history_fig.scatter(
     "time",
     "temperature",
     source=history_source,
+    marker="circle",
     size=5,
     color="#c91919",
 )
@@ -290,7 +302,7 @@ def _current_time() -> float | None:
     return None
 
 
-def _update_field(attr=None, old=None, new=None) -> None:  # noqa: ANN001
+def _update_field(attr, old, new) -> None:  # noqa: ANN001
     sec = _current_section()
     ts_id = _current_timestep_id()
     t = _current_time()
@@ -423,7 +435,7 @@ curdoc().title = "SAFIR Thermal Viewer"
 # ---------------------------------------------------------------------------
 
 if _section_ids and _timestep_ids:
-    _update_field()
+    _update_field(None, None, None)
     status_div.text = (
         f'<span style="color:#2ca02c;font-size:0.85rem;">'
         f"✓ Loaded {len(_section_ids)} section(s), {len(_timestep_ids)} time step(s)."
