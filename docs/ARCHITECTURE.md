@@ -2,29 +2,83 @@
 
 ## Overview
 
-PostProcessor-SAFIR is a collection of Python tools for post-processing [SAFIR](https://www.uee.uliege.be/cms/c_4016728/en/uee-safir) finite-element analysis results.  Results are stored in SQLite databases and explored through interactive Bokeh/Streamlit dashboards, Rhino visualisers, and CSV exports.
+PostProcessor-SAFIR is a collection of Python tools for post-processing [SAFIR](https://www.uee.uliege.be/cms/c_4016728/en/uee-safir) finite-element analysis results.  Results are stored in SQLite databases and explored through two independent interactive web viewers – one for 2-D thermal analysis and one for 3-D structural analysis.
+
+---
+
+## Application Architecture
+
+The project is split into **two fully independent viewer stacks**, each consisting of a Bokeh server (plots) and a FastAPI web shell (case picker + embedding).
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  THERMAL STACK                                                      │
+│                                                                     │
+│  launch_thermal.bat                                                 │
+│      │                                                              │
+│      ├─► Bokeh Server (port 5006)                                   │
+│      │       apps/thermal_viewer.py                                 │
+│      │       └─ database/queries_thermal.py (SQL)                   │
+│      │       └─ SQLite .db file (2-D thermal schema)                │
+│      │                                                              │
+│      └─► FastAPI (port 8000)                                        │
+│              apps/fastapi_thermal.py                                │
+│              └─ templates/thermal.html                              │
+│              └─ embeds Bokeh via server_document()                  │
+│                                                                     │
+│  Browser → http://localhost:8000                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  STRUCTURAL STACK                                                   │
+│                                                                     │
+│  launch_structural.bat                                              │
+│      │                                                              │
+│      ├─► Bokeh Server (port 5007)                                   │
+│      │       apps/structural_viewer.py                              │
+│      │       └─ database/queries_structural.py (SQL)                │
+│      │       └─ SQLite .db file (3-D structural schema)             │
+│      │                                                              │
+│      └─► FastAPI (port 8001)                                        │
+│              apps/fastapi_structural.py                             │
+│              └─ templates/structural.html                           │
+│              └─ embeds Bokeh via server_document()                  │
+│                                                                     │
+│  Browser → http://localhost:8001                                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+Both stacks are completely independent: they use different ports, different databases, different templates, and can be run separately or together.
+
+---
+
+## Directory Structure
 
 ```
 PostProcessor-SAFIR/
-├── shared/                  ← Reusable utilities (this PR)
-│   ├── database/            ← Abstract + concrete DB managers
-│   ├── utils/               ← Config, logging, validation, formatting
-│   ├── visualization/       ← Base viewer, colour schemes, export
-│   └── data/                ← SAFIR parsers and processing pipelines
-├── 2D-THERMAL/              ← 2-D thermal analysis tools
-│   ├── 2_2D-Thermal-Create-DB/
-│   ├── 4_2D-Thermal-Bokeh-Dashboard/
-│   └── 5_2D-Thermal-Rhino-Visualizer/
-├── 3D-STRUCTURAL/           ← 3-D structural analysis tools
-│   ├── 2_3D-Struct-Create-DB/
-│   ├── 4_3D-Struct-Rhino-Movie/
-│   ├── 5_3D-Struct-Beam-Forces-Viewer/
-│   ├── 6_3D-Struct-Node-Displacement-Viewer/
-│   ├── 7_3D-Struct-Beam-FiberStress/
-│   ├── 8_3D-Struct-Slab-MohrStress-Plotter/
-│   └── 9_3D-Struct-Slab-Stress-Plotter/
-├── SAFIR-Dashboard/         ← Streamlit multi-tool dashboard
-└── _Archive/                ← Legacy / reference code (not maintained)
+├── apps/                        ← Web viewer applications
+│   ├── thermal_viewer.py        ← Bokeh 2-D thermal app (port 5006)
+│   ├── structural_viewer.py     ← Bokeh 3-D structural app (port 5007)
+│   ├── fastapi_thermal.py       ← FastAPI thermal shell (port 8000)
+│   └── fastapi_structural.py    ← FastAPI structural shell (port 8001)
+│
+├── database/                    ← SQL query modules
+│   ├── queries_thermal.py       ← Thermal DB queries
+│   └── queries_structural.py    ← Structural DB queries
+│
+├── templates/                   ← Jinja2 HTML templates
+│   ├── thermal.html             ← Thermal viewer landing page
+│   └── structural.html          ← Structural viewer landing page
+│
+├── shared/                      ← Reusable utilities
+│   ├── database/                ← DB managers (abstract + concrete)
+│   ├── utils/                   ← Config, logging, validation, formatting
+│   ├── visualization/           ← Base viewer, colour schemes, export
+│   └── data/                    ← SAFIR parsers and processing pipelines
+│
+├── 2D-THERMAL/                  ← 2-D thermal analysis tools
+├── 3D-STRUCTURAL/               ← 3-D structural analysis tools
+└── _Archive/                    ← Legacy / reference code (not maintained)
 ```
 
 ---
@@ -49,9 +103,9 @@ PostProcessor-SAFIR/
               │  └───────────────┘                  │
               └──────────────────┬──────────────────┘
                                  │ imports
-        ┌────────────────────────┼──────────────────────┐
-        ▼                        ▼                       ▼
-  2D-THERMAL tools       3D-STRUCTURAL tools      SAFIR-Dashboard
+        ┌───────────────────────┼──────────────────────┐
+        ▼                        ▼                      ▼
+  2D-THERMAL tools       3D-STRUCTURAL tools     Web Viewers (apps/)
 ```
 
 ---
@@ -71,11 +125,17 @@ SAFIR simulation
      shared.database.*DatabaseManager
      (SQLite .db file)
             │
+            ├─ database.queries_thermal / queries_structural
+            │         (SQL queries → pd.DataFrame)
+            │
             ├─ shared.data.processors.*Processor
             │         (aggregations, statistics)
             │
-            └─ shared.visualization.*Viewer
-                      (Bokeh / Streamlit / CSV)
+            └─ apps.*_viewer.py (Bokeh)
+                      │
+                      └─ apps.fastapi_*.py (FastAPI)
+                                │
+                                └─ Browser (localhost)
 ```
 
 ---
@@ -95,6 +155,33 @@ SAFIR simulation
 3. Implement `create_tables()` – call `self._create_common_tables(cursor)` first.
 4. Implement `_do_clear()` – delete rows in reverse FK order.
 5. Export the new class from `shared/database/__init__.py`.
+
+---
+
+## Database Schemas
+
+### 2-D Thermal Schema
+
+| Table | Key Columns |
+|-------|-------------|
+| `timestamps` | `id`, `time` |
+| `node_coordinates` | `node_id`, `x`, `y` |
+| `node_temperatures` | `timestamp_id`, `node_id`, `Temperature` |
+| `solid_mesh` | `solid_id`, `N1–N4`, `material_tag` |
+| `material_list` | `material_tag`, `material_name` |
+
+### 3-D Structural Schema
+
+| Table | Key Columns |
+|-------|-------------|
+| `timestamps` | `id`, `time` |
+| `node_coordinates` | `node_id`, `x`, `y`, `z` |
+| `beam_nodes` | `beam_id`, `N1–N4`, `beam_tag` |
+| `beam_section` | `beam_tag`, `section` |
+| `beam_forces` | `timestamp_id`, `beam_id`, `gauss_point`, `N`, `Mz`, `My`, `Vz`, `Vy` |
+| `node_displacements` | `timestamp_id`, `node_id`, `D1–D7` |
+| `beam_fiber_stresses` | `timestamp_id`, `beam_id`, `gauss_point`, `fiber_index`, `stress` |
+| `beam_fiber_strains` | `timestamp_id`, `beam_id`, `gauss_point`, `fiber_index`, `strain` |
 
 ---
 
@@ -132,7 +219,6 @@ SAFIR simulation
 | `validate_db_path()` | Raises `ValueError` if parent dir is missing |
 | `validate_xml_path()` | Raises `ValueError` if not an `.xml` file |
 | `format_value()` | Numeric formatting with optional unit string |
-| `format_table_row()` | Fixed-width table row for CLI output |
 | `scale_n_to_kips()` | N → kips unit conversion |
 | `scale_nm_to_kips_ft()` | N·m → kip-ft unit conversion |
 | `scale_m_to_inches()` | m → in unit conversion |
@@ -141,7 +227,8 @@ SAFIR simulation
 
 ## Design Principles
 
-1. **No breaking changes** – existing tools in `2D-THERMAL/`, `3D-STRUCTURAL/`, and `SAFIR-Dashboard/` continue to work standalone.
-2. **Incremental migration** – tools can import from `shared/` one module at a time.
-3. **Thin wrappers** – `shared/` does not re-implement business logic; it extracts duplicated plumbing.
-4. **Framework-agnostic** – `shared/database` and `shared/data` have no UI dependencies; `shared/visualization` uses only the standard library in its base class.
+1. **Separation of concerns** – thermal and structural stacks are fully independent; each has its own FastAPI app, Bokeh viewer, SQL query module, and HTML template.
+2. **No breaking changes** – existing tools in `2D-THERMAL/`, `3D-STRUCTURAL/`, and the Bokeh viewers continue to work standalone (no FastAPI required).
+3. **Thin wrappers** – FastAPI apps do not duplicate Bokeh logic; they only embed the Bokeh viewer via `server_document()`.
+4. **Framework-agnostic core** – `shared/database` and `shared/data` have no UI dependencies; `shared/visualization` uses only the standard library in its base class.
+
