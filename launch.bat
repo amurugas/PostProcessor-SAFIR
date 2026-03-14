@@ -20,7 +20,7 @@ REM                                           or /thermal_viewer
 REM ============================================================
 
 REM --- (Optional) Set the default database path here ----------
-REM set SAFIR_DB_PATH=C:\path\to\Raw.db
+set SAFIR_DB_PATH=C:\Users\am1\PycharmProjects\PostProcessor-SAFIR\3D-STRUCTURAL\3_3D-Struct-DB\new5.db
 
 REM --- Launch Bokeh server with both viewers -------------------
 echo Starting SAFIR Results Viewer...

@@ -12,7 +12,7 @@ cd /d "%~dp0"
 REM ── Configuration ────────────────────────────────────────────
 REM Set SAFIR_CASES_DIR to the root folder that contains one
 REM sub-folder per case.  Each sub-folder must have a *.db file.
-SET SAFIR_CASES_DIR=%USERPROFILE%\SAFIR\Cases
+SET SAFIR_CASES_DIR=C:\Users\am1\PycharmProjects\PostProcessor-SAFIR\SAFIR\Cases
 
 REM Bokeh server URLs (leave as-is for local single-machine setup)
 SET BOKEH_URL=http://localhost:5006/structural_viewer
